@@ -1,0 +1,33 @@
+Important Commands
+_______________________________
+
+To create an interactive job on the cluster and work on jupyter:
+
+srun --pty -t 1-0 --partition=mundus --gres=gpu:a100-20 bash
+
+jupyter notebook --port 30333
+
+then if we want to work from the local machine: ssh -L 30333:localhost:30333 <<cluster-login-node>> ssh -L 30333:localhost:30333 <<cluster-compute-node>>
+
+_____________________________________________________________________________________________________________________________________________________________
+
+using screen: 
+
+nvidia-smi
+
+screen
+run interactive job
+detach: ctrl a d
+reattach: screen -R 
+close screen: ctrl d 
+____________________________________________________________________________________________________________________________________________________________
+
+Remote cluster access:
+
+login: cjames706
+pass: ab3#AN8n
+
+start vpn -> 
+sudo wg-quick up wg0
+ssh cjames706@sms.lis-lab.fr
+login

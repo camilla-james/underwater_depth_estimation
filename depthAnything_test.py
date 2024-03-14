@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import transformers
 from transformers import AutoImageProcessor, AutoModelForDepthEstimation
 import torch
+import time 
 import numpy as np
 from PIL import Image
 import requests
@@ -18,17 +19,18 @@ def main():
     
     # load the dataset into a dataloader
     dataset = train_dataset.with_format("torch")
-    dataloader = torch.utils.data.DataLoader(dataset, num_workers=4, batch_size = 16)
+    dataloader = torch.utils.data.DataLoader(dataset, num_workers=2, batch_size = 16)
 
     image_processor = AutoImageProcessor.from_pretrained("LiheYoung/depth-anything-small-hf")
     model = AutoModelForDepthEstimation.from_pretrained("LiheYoung/depth-anything-small-hf")
     device = 'cuda' if torch.cuda.is_available() else 'cpu' 
+    model.to(device)
     # prepare image for the model
     for i, batch in enumerate(tqdm(dataloader)):
+    	t0 = time.time()
         image = batch.get('image')
-    #     print(image)
-        inputs = image_processor(images=image, return_tensors="pt")
-    #     print(inputs.values())
+        inputs = image_processor(images=image, return_tensors="pt").to(device)
+        
         with torch.no_grad():
             outputs = model(**inputs)
             predicted_depth = outputs.predicted_depth
@@ -42,11 +44,12 @@ def main():
         )
 
         # visualize the prediction
-        output = prediction.squeeze().cpu().numpy()
-        print(output)
-        formatted = (output * 255 / np.max(output)).astype("uint8")
-        depth = Image.fromarray(formatted)
+        # output = prediction.squeeze().cpu().numpy()
+        # print(output)
+        # formatted = (output * 255 / np.max(output)).astype("uint8")
+        # depth = Image.fromarray(formatted)
         # plt.imshow(depth)
+        print(f"The time taken is:"{time.time()-t0})
 
 
 if __name__ == "__main__":
