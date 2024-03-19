@@ -7,7 +7,7 @@ srun --pty -t 1-0 --partition=mundus --gres=gpu:a100-20 bash
 
 jupyter notebook --port 30333
 
-then if we want to work from the local machine: ssh -L 30333:localhost:30333 <<cluster-login-node>> ssh -L 30333:localhost:30333 <<cluster-compute-node>>
+then we want to work from the local machine: ssh -L 30333:localhost:30333 cjames706@sms.lis-lab.fr ssh -L 30333:localhost:30333 cjames706@mundus-mir-3
 
 _____________________________________________________________________________________________________________________________________________________________
 
@@ -35,3 +35,11 @@ login
 ______________________________________________________________________________________________________________________________________________________
 
 cd /mundus/data-mundus/ underwater
+
+eiffel/2020/images
+
+eiffel/2020/depth/dense/depth
+
+Dataset ImageFolder
+    Number of datapoints: 5587
+    Root location: eiffel/2020/
