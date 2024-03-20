@@ -1,0 +1,4 @@
+Model,Delta1,AbsRel,AbsRel Log,RMSE,RMSE Log
+DepthAnything-Small,1.242399e-07,0.600148,-0.221742,1.129932e-08,-7.946948
+DepthAnything-Large,3.331228e-06,0.521169,-0.283022,7.219192e-08,-7.141511
+
