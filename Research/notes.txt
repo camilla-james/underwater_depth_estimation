@@ -3,4 +3,15 @@ MDE:
   
 - Models are typically evaluated using RMSE or absolute relative error.
 
+________________________________________________________________________________________________________________________________
 
+Observations
+- ground truths -> weirdly uncompatible:
+  - imprecise algorithms 
+  - flesea: objects in the water, not considered for the depth, missing things that depthAnything sees
+- average absRel, good RMSE, bad delta
+- delta could be a result of the scale
+- labels are metric, depthAnything is not 
+- conclusion: evaluating depthAnything on labelled data is not going to give a good performance
+  - despite scaling and flipping
+  

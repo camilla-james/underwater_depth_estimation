@@ -7,7 +7,8 @@ srun --pty -t 1-0 --partition=mundus --gres=gpu:a100-20 bash
 
 jupyter notebook --port 30333
 
-then we want to work from the local machine: ssh -L 30333:localhost:30333 cjames706@sms.lis-lab.fr ssh -L 30333:localhost:30333 cjames706@mundus-mir-3
+then we want to work from the local machine by running this is in a different terminal (on the local machine):
+ ssh -L 30333:localhost:30333 cjames706@sms.lis-lab.fr ssh -L 30333:localhost:30333 cjames706@mundus-mir-3
 
 _____________________________________________________________________________________________________________________________________________________________
 
@@ -43,3 +44,17 @@ eiffel/2020/depth/dense/depth
 Dataset ImageFolder
     Number of datapoints: 5587
     Root location: eiffel/2020/
+    
+    
+______________________________________________________________________________________
+copying
+
+rsync -auvz --progress cjames706@sms.lis-lab.fr:~/underwater_depth_estimation/eiffel/2020/ ./
+
+______________________________________________________________________________________
+
+ml conda
+conda activate /public/conda/user_envs/cjames706/envs/depth_estimation
+
+
+rebuild environment.yml  

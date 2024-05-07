@@ -2,3 +2,7 @@
 .ipynb_checkpoints/
 git.txt
 commands.txt
+/home/camilla/Documents/MIR_2023-2024/SEMESTER_2/DATA_DRIVEN_MACHINE_PERCEPTION/underwater_depth_estimation/PEFT_training/
+*.yml
+./Training/__pycache__/
+./Training/wandb/
