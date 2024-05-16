@@ -58,7 +58,7 @@ class EiffelTowerDataset(Dataset):
         mask_file = self.mask_files[index]
         
         image = Image.open(image_file).convert('RGB')
-        mask = Image.open(mask_file)
+        mask = Image.open(mask_file).convert('L')   # Convert target image to grayscale
         
         if self.transforms:
             image = self.transforms(image)

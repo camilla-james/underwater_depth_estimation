@@ -1,5 +1,0 @@
-[default]
-entity = dolphins
-project = DepthUnderwater_training
-base_url = https://api.wandb.ai
-

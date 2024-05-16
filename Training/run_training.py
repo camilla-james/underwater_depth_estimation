@@ -19,8 +19,8 @@ WANDB_PROJECT = "DepthUnderwater_training"
 WANDB_DATASET = "EiffelTowerDataset"
 
 ### Hyperparameters
-TRAIN_BATCH_SIZE = 16
-VALID_BATCH_SIZE = 16
+TRAIN_BATCH_SIZE = 12
+VALID_BATCH_SIZE = 12
 DATA_USE_PERCENTAGE = 100
 TRAIN_SPLIT = 0.8
 
@@ -31,7 +31,7 @@ LORA_RANK = 32
 LORA_ALPHA = 64
 LORA_DROPOUT = 0.001
 BIAS = "lora_only"
-GRAD_CLIP = 1.0
+GRAD_CLIP = 3.0
 MIN_LR = 1e-7
 
 ### Grid Search
@@ -43,10 +43,10 @@ model = DepthAnythingPEFT(model_checkpoint = MODEL_CHECKPOINT)
 
 #consider changing the transform
 data_transforms = transforms.Compose([
-    #transforms.Resize((224, 224)),
+    # transforms.Lambda(lambda img: img.convert("RGB")),
+    transforms.Resize((1080, 1920)),
     transforms.ToTensor(),
-    transforms.Resize((1080, 1920))
-    #transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
 
 dataset = EiffelTowerDataset('/home/mundus/cjames706/underwater_depth_estimation/eiffel/2020/images/',

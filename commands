@@ -3,7 +3,7 @@ _______________________________
 
 To create an interactive job on the cluster and work on jupyter:
 
-srun --pty -t 1-0 --partition=mundus --gres=gpu:a100-20 bash
+srun --pty -t 1-0 --partition=all --gres=gpu:l40-48:1 bash
 
 jupyter notebook --port 30333
 

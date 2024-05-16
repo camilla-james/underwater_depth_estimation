@@ -1,6 +1,7 @@
 import Dataset
 from Evaluation import EvaluationMetric
 import torch
+from transformers import AutoImageProcessor, AutoModelForDepthEstimation
 from torch.utils.data import Dataset
 import wandb
 import math
@@ -25,7 +26,7 @@ class PEFTTraining:
         self.model.to(self.device)
         self.train_batch_size = train_batch_size
         self.model_name = model_checkpoint.split("/")[-1]
-        self.training_loader = torch.utils.data.DataLoader(train_dataset, batch_size= train_batch_size, shuffle=True)
+        self.training_loader = torch.utils.data.DataLoader(train_dataset, batch_size= train_batch_size, shuffle=True, pin_memory=True)
         self.validation_loader = torch.utils.data.DataLoader(valid_dataset, batch_size= valid_batch_size, shuffle=False)
         self.num_steps = len(self.training_loader) * self.epoch
         self.learning_rate = learning_rate
@@ -50,24 +51,45 @@ class PEFTTraining:
         assert 0 <= decay_ratio <= 1
         coeff = 0.5 * (1.0 + math.cos(math.pi * decay_ratio)) # coeff ranges 0..1
         return self.min_lr + coeff * (self.learning_rate - self.min_lr)
-
+        
+    def pad_to_same_size(self, pred, target):
+        input_height, input_width = pred.size()[2:]
+        target_height, target_width = target.size()[2:]
+        
+        if input_height != target_height or input_width != target_width:
+            max_height = max(input_height, target_height)
+            max_width = max(input_width, target_width)
+            
+            pred = F.pad(input, (0, max_width - input_width, 0, max_height - input_height))
+            target = F.pad(target, (0, max_width - target_width, 0, max_height - target_height))
+        
+        return pred, target
 
     def train_one_epoch(self, epoch_index):
         running_loss = 0.
         last_loss = 0.
-
+        self.model.to(self.device)
         # Here, we use enumerate(training_loader) instead of
         # iter(training_loader) so that we can track the batch
         # index and do some intra-epoch reporting
         iteration = epoch_index * self.iter_per_epoch
-        for i, (inputs, labels) in enumerate(self.training_loader):
-            # Every data instance is an input + label pair
-            inputs, labels = inputs.to(self.device),labels.to(self.device)
+
+        # accumalate batchs
+        accumulated_batches = 0  # Counter for accumulated batches
+        accumulation_steps = 4
+        image_processor = AutoImageProcessor.from_pretrained("LiheYoung/depth-anything-small-hf")
+        for i, (data, labels) in enumerate(self.training_loader):
+            # Every data instance is an input + label pai
+            inputs = image_processor(images=data, return_tensors="pt", do_rescale= False)
+            inputs = inputs.to(self.device, non_blocking=True, dtype=torch.float32, memory_format=torch.contiguous_format)
+            labels = labels.to(self.device, non_blocking=True, dtype=torch.float32, memory_format=torch.contiguous_format)
 
             # determine and set the learning rate for this iteration
             lr = self.get_lr(iteration)
+            if lr == 0.0:
+                lr = 0.001
             self.optimizer.param_groups[0]["lr"] = lr
-
+        
             # clip the gradient
             if self.grad_clip != 0.0:
                 torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
@@ -76,15 +98,24 @@ class PEFTTraining:
             self.optimizer.zero_grad()
 
             # Make predictions for this batch
-            outputs = self.model(inputs).predicted_depth
-
+            outputs = self.model(**inputs).predicted_depth
+            prediction = torch.nn.functional.interpolate(
+                outputs.unsqueeze(1),
+                size=[data.shape[2], data.shape[3]],
+                mode="bicubic",
+                align_corners=False,
+            )
             # Compute the loss and its gradients
-            
-            loss = self.loss_fn(torch.squeeze(outputs), torch.squeeze(labels))
+            prediction, labels = self.pad_to_same_size(prediction, labels)
+            loss = self.loss_fn(torch.squeeze(prediction), torch.squeeze(labels))
             loss.backward()
+            accumulated_batches += 1
 
-            # Adjust learning weights
-            self.optimizer.step()
+            if accumulated_batches == accumulation_steps:
+                # Update model parameters after accumulation_steps batches
+                self.optimizer.step()
+                accumulated_batches = 0  # Reset accumulated_batches counter
+                self.optimizer.zero_grad() 
 
             # with self.warmup_scheduler.dampening():
             #     if self.warmup_scheduler.last_step + 1 >= self.warmup_period:
@@ -101,6 +132,10 @@ class PEFTTraining:
                 wandb.log({'Loss/train (per batch)': last_loss})
                 wandb.log({'Learning Rate (per batch)':  self.optimizer.param_groups[0]["lr"]})
                 running_loss = 0.
+            # If there are remaining accumulated gradients, update model parameters
+        if accumulated_batches > 0:
+            self.optimizer.step()
+            self.optimizer.zero_grad()
 
         return last_loss
     
