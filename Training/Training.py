@@ -6,6 +6,7 @@ from torch.utils.data import Dataset
 import wandb
 import math
 import os
+import cv2 
 
 
 class PEFTTraining:
@@ -79,7 +80,8 @@ class PEFTTraining:
         accumulation_steps = 4
         image_processor = AutoImageProcessor.from_pretrained("LiheYoung/depth-anything-small-hf")
         for i, (data, labels) in enumerate(self.training_loader):
-            # Every data instance is an input + label pai
+            # Every data instance is an input + label pair
+            # labels = self.eval.preprocess_labels(labels)
             inputs = image_processor(images=data, return_tensors="pt", do_rescale= False)
             inputs = inputs.to(self.device, non_blocking=True, dtype=torch.float32, memory_format=torch.contiguous_format)
             labels = labels.to(self.device, non_blocking=True, dtype=torch.float32, memory_format=torch.contiguous_format)
@@ -106,7 +108,7 @@ class PEFTTraining:
                 align_corners=False,
             )
             # Compute the loss and its gradients
-            prediction, labels = self.pad_to_same_size(prediction, labels)
+            # prediction, labels = self.pad_to_same_size(prediction, labels)
             loss = self.loss_fn(torch.squeeze(prediction), torch.squeeze(labels))
             loss.backward()
             accumulated_batches += 1
@@ -163,9 +165,20 @@ class PEFTTraining:
             # Disable gradient computation and reduce memory consumption.
             with torch.no_grad():
                 for i, (vinputs, vlabels) in enumerate(self.validation_loader):
+                    # vlabels = self.eval.preprocess_labels(vlabels)
                     vinputs, vlabels = vinputs.to(self.device),vlabels.to(self.device)
                     voutputs = self.model(vinputs).predicted_depth
-                    vloss = self.loss_fn(torch.squeeze(voutputs), torch.squeeze(vlabels))
+                    voutputs_squeezed = torch.squeeze(voutputs)
+                    vlabels_squeezed = torch.squeeze(vlabels)
+                    if voutputs_squeezed.size() != vlabels_squeezed.size():
+                        # Find the maximum size along each dimension
+                        max_size = torch.max(torch.tensor(voutputs_squeezed.size()), torch.tensor(vlabels_squeezed.size()))
+                        max_size = max_size.tolist()  # Convert to list for interpolation
+                    
+                        # Resize tensors to the maximum size
+                        voutputs_squeezed = torch.nn.functional.interpolate(voutputs_squeezed.unsqueeze(0).unsqueeze(0), size=max_size, mode='nearest').squeeze(0).squeeze(0)
+                        vlabels_squeezed = torch.nn.functional.interpolate(vlabels_squeezed.unsqueeze(0).unsqueeze(0), size=max_size, mode='nearest').squeeze(0).squeeze(0)
+                    vloss = self.loss_fn(voutputs_squeezed, vlabels_squeezed)
                     self.eval.compute_metrics(vinputs,voutputs,vlabels)
                     running_vloss += vloss
 

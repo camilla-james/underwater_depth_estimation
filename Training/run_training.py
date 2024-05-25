@@ -26,7 +26,7 @@ TRAIN_SPLIT = 0.8
 
 LOSS = nn.HuberLoss()
 OPTIM = "AdamW"
-EPOCH = 1
+EPOCH = 20
 LORA_RANK = 32
 LORA_ALPHA = 64
 LORA_DROPOUT = 0.001
@@ -35,16 +35,16 @@ GRAD_CLIP = 3.0
 MIN_LR = 1e-7
 
 ### Grid Search
-LEARNING_RATE_LIST = [0.001,0.01,0.0001]
-WARMUP_PERIOD_PERCENTAGE_LIST = [10, 20, 30,40, 50]
-
+LEARNING_RATE_LIST = [0.0001]
+WARMUP_PERIOD_PERCENTAGE_LIST = [40]
+OPTIM_LIST = ["AdamW", "SGD", "ADAM"]
 
 model = DepthAnythingPEFT(model_checkpoint = MODEL_CHECKPOINT)
 
 #consider changing the transform
 data_transforms = transforms.Compose([
     # transforms.Lambda(lambda img: img.convert("RGB")),
-    transforms.Resize((1080, 1920)),
+    transforms.Resize((720, 1280)),
     transforms.ToTensor(),
     # transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 ])
@@ -72,10 +72,10 @@ peft_config = LoraConfig(
 for LEARNING_RATE in LEARNING_RATE_LIST:
 
     for WARMUP_PERIOD_PERCENTAGE in WARMUP_PERIOD_PERCENTAGE_LIST:
-
+        
         lora_model = model.peft_model(peft_config)
         model.trainable_parameters(lora_model)
-
+    
         if OPTIM == "AdamW":
             optimizer = torch.optim.AdamW(lora_model.parameters(), lr= LEARNING_RATE)
 
@@ -91,7 +91,7 @@ for LEARNING_RATE in LEARNING_RATE_LIST:
 
         user = WANDB_USER
         project = WANDB_PROJECT
-        display_name = f"{WANDB_DATASET} lr: {LEARNING_RATE}, warmup: {WARMUP_PERIOD_PERCENTAGE}"
+        display_name = f"Testing with 20 epochs, {WANDB_DATASET} lr: {LEARNING_RATE}, warmup: {WARMUP_PERIOD_PERCENTAGE}, optim: {OPTIM}"
         config = {"lr": LEARNING_RATE, "batch_size": TRAIN_BATCH_SIZE, "data_used(%)" : DATA_USE_PERCENTAGE, "train_split": TRAIN_SPLIT, "loss": "mse",
                 "optimizer" : OPTIM, "epoch": EPOCH, "lora_rank": LORA_RANK, "lora_alpha": LORA_ALPHA, "lora_dropout" :LORA_DROPOUT, "bias":BIAS, 
                 "warmup_period":WARMUP_PERIOD_PERCENTAGE,"min_lr": MIN_LR,"grad_clip" :GRAD_CLIP}

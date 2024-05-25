@@ -7,6 +7,7 @@ import numpy as np
 import torch
 #import scipy
 import wandb
+import cv2 
 
 class EvaluationMetric:
 
@@ -59,6 +60,9 @@ class EvaluationMetric:
         
         y_pred, y_true = self.scale_offset(y_pred, y_true)
         if log:
+            mask = y_pred > 0.00001
+            y_pred = y_pred[mask]
+            y_true = y_true[mask]
             y_pred = np.log(y_pred)
             y_true = np.log(y_true)
         mse = np.mean((y_pred - y_true)**2)
@@ -82,7 +86,7 @@ class EvaluationMetric:
             Percentage of pixels for which max(d*/d, d/d*) < threshold.
             
         """
-        y_pred, y_true = scale_offset(y_pred.numpy(), y_true.numpy())
+        y_pred, y_true = self.scale_offset(y_pred.numpy(), y_true.numpy())
         y_pred = torch.from_numpy(y_pred)
         y_true = torch.from_numpy(y_true)
         # Compute element-wise ratios
@@ -135,9 +139,29 @@ class EvaluationMetric:
         si_log_score = torch.mean(si_log_score)
         return si_log_score
 
+    
+    def preprocess_labels(self, batch_labels):
+        preprocessed_batch = []
+        
+        for labels in batch_labels:
+            # Prepare labels
+            labels = labels.cpu().numpy().astype(np.uint8)
+            labels = labels.transpose(1, 2, 0)
+            
+            # Apply Canny edge detection
+            edges = cv2.Canny(labels, threshold1=300, threshold2=450)  # Adjust thresholds as needed
+            
+            # Apply Gaussian blur to the detected edges
+            blurred = cv2.GaussianBlur(edges, (5, 5), 0)
+            
+            # Add the preprocessed image to the batch list
+            preprocessed_batch.append(blurred)
+    
+        return torch.Tensor(np.array(preprocessed_batch))
+        
     def compute_metrics(self, input_image, outputs, labels):
         metrics = []
-
+        # labels = self.preprocess_labels(labels)
         with torch.no_grad():
             predicted_depth = outputs
             img_size = fn.get_image_size(input_image)
